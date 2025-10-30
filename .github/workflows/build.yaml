@@ -57,12 +57,19 @@ jobs:
           --hidden-import settings_structure \
           main.py
 
+    - name: Install zip on Ubuntu
+      if: matrix.os == 'ubuntu-latest'
+      run: sudo apt-get update && sudo apt-get install -y zip
+
     - name: Create distribution archive
       shell: bash
       run: |
         if [ "${{ matrix.os }}" == "windows-latest" ]; then
-          cd dist && zip -r ../credmanager-${{ matrix.platform }}.zip credmanager/
+          # Для Windows создаем архив с помощью PowerShell
+          cd dist/credmanager
+          powershell "Compress-Archive -Path * -DestinationPath ../../credmanager-${{ matrix.platform }}.zip"
         else
+          # Для Linux/macOS используем tar
           cd dist && tar -czf ../credmanager-${{ matrix.platform }}.tar.gz credmanager/
         fi
 
