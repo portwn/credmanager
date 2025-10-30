@@ -45,10 +45,10 @@ jobs:
         python -m pip install --upgrade pip
         pip install pyinstaller pyotp cryptography
 
-    - name: Build executable
+    - name: Build executable (onedir)
       shell: bash
       run: |
-        pyinstaller --onefile --name credmanager \
+        pyinstaller --onedir --name credmanager \
           --hidden-import pyotp \
           --hidden-import cryptography \
           --hidden-import settings_general \
@@ -57,13 +57,13 @@ jobs:
           --hidden-import settings_structure \
           main.py
 
-    - name: Rename executable for platform
+    - name: Create distribution archive
       shell: bash
       run: |
         if [ "${{ matrix.os }}" == "windows-latest" ]; then
-          mv dist/credmanager.exe dist/credmanager-${{ matrix.platform }}.exe
+          cd dist && zip -r ../credmanager-${{ matrix.platform }}.zip credmanager/
         else
-          mv dist/credmanager dist/credmanager-${{ matrix.platform }}
+          cd dist && tar -czf ../credmanager-${{ matrix.platform }}.tar.gz credmanager/
         fi
 
     - name: Upload artifact
@@ -71,7 +71,7 @@ jobs:
       with:
         name: credmanager-${{ matrix.platform }}
         path: |
-          dist/credmanager-${{ matrix.platform }}*
+          credmanager-${{ matrix.platform }}.*
         retention-days: 90
 
   release:
