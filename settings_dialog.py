@@ -1,3 +1,4 @@
+#settings_dialog.py
 import tkinter as tk
 from tkinter import ttk
 from settings_general import GeneralSettingsTab

@@ -1,3 +1,4 @@
+# main.py
 import tkinter as tk
 from tkinter import ttk, simpledialog, messagebox
 import json
@@ -7,9 +8,49 @@ import pyotp
 import time
 import sys
 import threading
+import platform
 
 # Импортируем SettingsDialog из отдельного файла
 from settings_dialog import SettingsDialog
+
+class ClipboardManager:
+    """Универсальный менеджер буфера обмена для всех платформ"""
+    
+    @staticmethod
+    def copy_to_clipboard(text):
+        """Копирует текст в буфер обмена с учетом платформы"""
+        try:
+            # Для Windows используем pyperclip если доступен, иначе fallback на Tkinter
+            if platform.system() == "Windows":
+                try:
+                    import pyperclip
+                    pyperclip.copy(text)
+                    return True
+                except ImportError:
+                    # Fallback для Windows без pyperclip
+                    root = tk.Tk()
+                    root.withdraw()
+                    root.clipboard_clear()
+                    root.clipboard_append(text)
+                    root.update()
+                    root.destroy()
+                    return True
+            else:
+                # Для Linux и macOS используем Tkinter
+                root = tk.Tk()
+                root.withdraw()
+                root.clipboard_clear()
+                root.clipboard_append(text)
+                root.update()
+                # Для Linux нужно держать окно открытым немного дольше
+                if platform.system() == "Linux":
+                    root.after(100, root.destroy)
+                else:
+                    root.destroy()
+                return True
+        except Exception as e:
+            print(f"Ошибка копирования в буфер обмена: {e}")
+            return False
 
 class CredentialsTable:
     def __init__(self, master):
@@ -106,6 +147,26 @@ class CredentialsTable:
 
         # Обработчик закрытия окна
         self.master.protocol("WM_DELETE_WINDOW", self.quit_application)
+
+    def copy_to_clipboard_safe(self, text):
+        """Безопасное копирование в буфер обмена с обработкой ошибок"""
+        success = ClipboardManager.copy_to_clipboard(text)
+        if success:
+            # Показываем уведомление о успешном копировании
+            self.show_copy_notification()
+        else:
+            messagebox.showerror("Ошибка", "Не удалось скопировать в буфер обмена")
+        return success
+
+    def show_copy_notification(self):
+        """Показывает временное уведомление о копировании"""
+        # Создаем временную метку
+        notification = tk.Label(self.master, text="✓ Скопировано в буфер обмена", 
+                               bg="green", fg="white", font=("Arial", 10))
+        notification.place(relx=0.5, rely=0.95, anchor=tk.CENTER)
+        
+        # Убираем уведомление через 1.5 секунды
+        self.master.after(1500, notification.destroy)
 
     def refresh_data(self):
         """Обновляет данные из файла и перерисовывает интерфейс"""
@@ -241,8 +302,6 @@ class CredentialsTable:
     
     def universal_key_handler(self, event):
         """Универсальный обработчик для обеих раскладок"""
-        #print(f"Key: {event.keysym}, Char: '{event.char}', Keycode: {event.keycode}")
-        
         # Проверяем keycode (физическая клавиша)
         if event.char == 'n' or event.char == 'т':  # Клавиша N/Т
             self.add_new_record()
@@ -268,7 +327,6 @@ class CredentialsTable:
             self.quit_application()
         elif event.keysym in ['Return', 'KP_Enter']:
             self.navigate_right()
-
 
     def read_json_file(self):
         """Чтение JSON файла"""
@@ -351,9 +409,7 @@ class CredentialsTable:
             if isinstance(tableData, dict) and tableData.get('type') != 'folder':
                 # Копируем значение в буфер обмена
                 actual_value = tableData.get('value', '')
-                self.master.clipboard_clear()
-                self.master.clipboard_append(actual_value)
-                self.master.update()
+                self.copy_to_clipboard_safe(actual_value)
                 self.root = self.root[:-1]
                 self.master.after(100, self.quit_application)
                 return
@@ -410,14 +466,6 @@ class CredentialsTable:
                     display_value = str(value) if len(str(value)) <= 50 else str(value)[:47] + "..."
                 
                 self.tree.insert("", "end", text=name, values=(display_value,))
-
-    def key_press_handler(self, event):
-        """Обработчик нажатий клавиш для навигации по дереву"""
-        if isinstance(event.widget, tk.Entry):
-            return
-            
-        if event.keysym == 'Return' or event.keysym == 'KP_Enter':
-            self.navigate_right()
 
     def select_first_item(self):
         """Выбирает первый элемент в дереве"""
@@ -484,31 +532,23 @@ class CredentialsTable:
                 try:
                     totp = pyotp.TOTP(actual_value)
                     current_code = totp.now()
-                    self.master.clipboard_clear()
-                    self.master.clipboard_append(current_code)
-                    self.master.update()
+                    self.copy_to_clipboard_safe(current_code)
                     print(f"Скопирован TOTP код: {current_code}")
                     self.save_state()
                     self.master.after(100, self.quit_application)
                 except Exception as e:
                     messagebox.showerror("Ошибка", f"Не удалось сгенерировать TOTP: {e}")
             elif value_type == 'password' and actual_value:
-                self.master.clipboard_clear()
-                self.master.clipboard_append(actual_value)
-                self.master.update()
+                self.copy_to_clipboard_safe(actual_value)
                 print("Скопирован пароль")
                 self.save_state()
                 self.master.after(100, self.quit_application)
             else:
-                self.master.clipboard_clear()
-                self.master.clipboard_append(actual_value)
-                self.master.update()
+                self.copy_to_clipboard_safe(actual_value)
                 self.save_state()
                 self.master.after(100, self.quit_application)
         else:
-            self.master.clipboard_clear()
-            self.master.clipboard_append(str(value))
-            self.master.update()
+            self.copy_to_clipboard_safe(str(value))
             self.save_state()
             self.master.after(100, self.quit_application)
 

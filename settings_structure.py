@@ -1,3 +1,4 @@
+#settings_structure.py
 import tkinter as tk
 from tkinter import messagebox, ttk
 import json
