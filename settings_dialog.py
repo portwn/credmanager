@@ -29,7 +29,20 @@ class SettingsDialog(tk.Toplevel):
         self.bind('<Escape>', lambda event: self.cancel_clicked())
         
         self.create_widgets()
-        
+        self.protocol("WM_DELETE_WINDOW", self.apply_and_close)  # закрытие крестиком
+        self.bind('<Escape>', lambda event: self.apply_and_close())  # Escape тоже сохраняет
+
+    def apply_and_close(self):
+        """Сохраняет настройки и закрывает окно"""
+        try:
+            # Получаем настройки из вкладки "Основные"
+            new_settings = self.general_tab.get_settings()
+            self.save_callback(new_settings)
+        except ValueError as e:
+            messagebox.showerror("Ошибка", str(e))
+            return
+        self.destroy()
+
     def create_widgets(self):
         # Создаем Notebook для вкладок
         notebook = ttk.Notebook(self)
@@ -85,5 +98,5 @@ class SettingsDialog(tk.Toplevel):
         self.export_tab.populate_tree()
         
     def cancel_clicked(self):
-        """Закрывает окно без сохранения настроек"""
+        self.apply_and_close()
         self.destroy()
